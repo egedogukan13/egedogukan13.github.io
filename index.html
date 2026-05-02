@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Link Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c0f;--bg2:#111115;--bg3:#17171d;--bg4:#1f1f28;
+  --border:#252530;--border2:#363645;
+  --text:#e8e8f0;--muted:#6b6b80;--hint:#38383f;
+  --accent:#7c6ff7;--accent2:#b0a8ff;--accent-bg:#18153a;--accent-glow:rgba(124,111,247,0.18);
+  --green:#34d399;--green-bg:#0c2118;--green-border:#1a4030;
+  --red:#f87171;--red-bg:#2a1212;
+  --amber:#fbbf24;--amber-bg:#2a1f08;
+  --blue:#60a5fa;--blue-bg:#0f1e30;
+  --pink:#f472b6;--pink-bg:#2a0f1e;
+  --teal:#2dd4bf;--teal-bg:#0a2220;
+  --r:10px;--rl:16px;
+}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* ── SCREENS ─────────────────────────────────── */
+.screen{display:none;flex:1}
+.screen.active{display:flex;flex-direction:column}
+
+/* ── LOADING ─────────────────────────────────── */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999}
+#loading.gone{display:none}
+.spinner{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:12px;color:var(--muted)}
+
+/* ── HOME ────────────────────────────────────── */
+#s-home{align-items:center;justify-content:center;padding:2rem}
+.home-inner{width:100%;max-width:380px;text-align:center}
+.home-logo{width:52px;height:52px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.home-logo svg{width:24px;height:24px}
+.home-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin-bottom:6px}
+.home-title span{color:var(--accent2)}
+.home-sub{font-size:12px;color:var(--muted);margin-bottom:2rem}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem}
+.mode-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.25rem 1rem;cursor:pointer;text-align:center;transition:all 0.18s}
+.mode-card:hover{border-color:var(--border2);background:var(--bg3);transform:translateY(-1px)}
+.mode-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.mode-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+.mode-desc{font-size:11px;color:var(--muted)}
+.home-hint{font-size:11px;color:var(--hint)}
+
+/* ── GATE ────────────────────────────────────── */
+#s-admin-gate,#s-viewer-gate{align-items:center;justify-content:center;padding:2rem}
+.gate{width:100%;max-width:340px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.75rem}
+.gate-logo{width:36px;height:36px;background:var(--accent-bg);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.gate h2{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px}
+.gate-sub{font-size:12px;color:var(--muted);margin-bottom:1.25rem}
+.field-label{font-size:10px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:5px;display:block}
+input[type=password]{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:9px 11px;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:10px}
+input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+input::placeholder{color:var(--hint)}
+.err{font-size:11px;color:var(--red);margin-bottom:10px;min-height:14px}
+.btn-primary{width:100%;padding:10px;background:var(--accent);color:#f0effe;border:none;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s;margin-bottom:8px}
+.btn-primary:hover{background:#6b5fe6}
+.btn-primary:active{transform:scale(0.98)}
+.btn-back{width:100%;padding:9px;background:none;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;transition:all 0.15s}
+.btn-back:hover{background:var(--bg3);color:var(--text)}
+
+/* ── APP SHELL ───────────────────────────────── */
+#s-admin,#s-viewer{flex-direction:column}
+.topbar{height:50px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;flex-shrink:0;position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.tb-logo{width:26px;height:26px;background:var(--accent-bg);border:1px solid var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tb-logo svg{width:13px;height:13px}
+.tb-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;letter-spacing:-0.3px}
+.tb-name span{color:var(--accent2)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.badge{font-size:10px;padding:3px 9px;border-radius:999px;font-weight:600;letter-spacing:0.4px}
+.badge-admin{background:var(--accent-bg);color:var(--accent2);border:1px solid var(--accent)}
+.badge-viewer{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.btn-sm{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer;transition:all 0.15s}
+.btn-sm:hover{background:var(--bg3);color:var(--text);border-color:var(--border2)}
+
+/* ── LAYOUT ──────────────────────────────────── */
+.app-body{display:flex;flex:1;overflow:hidden;height:calc(100vh - 50px)}
+.sidebar{width:185px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:1rem 0;overflow-y:auto;height:100%}
+.sb-section{padding:0 10px;margin-bottom:1.25rem}
+.sb-label{font-size:9px;color:var(--hint);letter-spacing:1.2px;text-transform:uppercase;padding:0 6px;margin-bottom:6px;display:block}
+.cat-item{display:flex;align-items:center;gap:0;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--muted);transition:all 0.15s;margin-bottom:1px}
+.cat-item:hover{background:var(--bg3);color:var(--text)}
+.cat-item.active{background:var(--accent-bg);color:var(--accent2)}
+.cat-item.active .cat-count{background:var(--accent);color:#fff}
+.cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:7px}
+.cat-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-count{font-size:9px;background:var(--bg4);color:var(--hint);padding:1px 6px;border-radius:999px;margin-left:4px}
+
+/* ── MAIN CONTENT ───────────────────────────── */
+.main-scroll{flex:1;overflow-y:auto;padding:1.25rem}
+.search-row{display:flex;align-items:center;gap:8px;margin-bottom:1.25rem}
+.search-wrap{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:0 12px;transition:border-color 0.15s}
+.search-wrap:focus-within{border-color:var(--accent)}
+.search-wrap input{flex:1;background:none;border:none;outline:none;padding:10px 0;font-family:'DM Mono',monospace;font-size:12px;color:var(--text)}
+.search-wrap input::placeholder{color:var(--hint)}
+.sort-select{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:6px 26px 6px 10px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6b80' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;transition:border-color 0.15s}
+.sort-select:focus{border-color:var(--accent)}
+.sort-select option{background:var(--bg3);color:var(--text)}
+
+/* ── ADD FORM ────────────────────────────────── */
+.add-form{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.1rem 1.25rem;margin-bottom:1.25rem}
+.add-form-hd{font-size:11px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.add-form-hd svg{opacity:0.5}
+.add-inputs{display:grid;grid-template-columns:1fr 1.8fr 1fr auto;gap:8px;align-items:end}
+.field-group{display:flex;flex-direction:column;gap:4px}
+.field-group .field-label{margin-bottom:0}
+input[type=text],input[type=url],select.cat-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:8px 10px;font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color 0.15s;width:100%}
+input[type=text]:focus,input[type=url]:focus,select.cat-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+select.cat-select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6b80' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-color:var(--bg3)}
+select.cat-select option{background:var(--bg3);color:var(--text)}
+.btn-add{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--accent);color:#f0effe;border:none;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.15s;height:36px}
+.btn-add:hover{background:#6b5fe6}
+.btn-add:active{transform:scale(0.97)}
+.add-err{font-size:11px;color:var(--red);margin-top:6px;min-height:14px}
+
+/* ── LINKS LIST ──────────────────────────────── */
+.list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.list-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--hint);letter-spacing:1px;text-transform:uppercase}
+.list-count{font-size:11px;color:var(--hint)}
+.links-grid{display:flex;flex-direction:column;gap:6px}
+
+.link-card{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;transition:all 0.16s;animation:fadein 0.2s ease forwards}
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.link-card:hover{border-color:var(--border2);background:var(--bg3)}
+.link-card.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+.link-card.dragging{opacity:0.35}
+.drag-handle{color:var(--hint);cursor:grab;flex-shrink:0;display:flex;align-items:center;padding:2px}
+.drag-handle:active{cursor:grabbing}
+.drag-handle svg{width:12px;height:12px}
+.link-favicon{width:32px;height:32px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;overflow:hidden;letter-spacing:0}
+.link-favicon img{width:100%;height:100%;object-fit:contain;border-radius:5px}
+.link-body{flex:1;min-width:0}
+.link-title{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-url{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.link-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cat-pill{font-size:9px;padding:2px 9px;border-radius:999px;font-weight:600;letter-spacing:0.4px;white-space:nowrap}
+.link-actions{display:flex;gap:5px}
+.btn-open{font-family:'DM Mono',monospace;font-size:10px;padding:4px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all 0.15s}
+.btn-open:hover{background:var(--bg4);color:var(--text)}
+.btn-del{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid transparent;background:none;color:var(--muted);cursor:pointer;transition:all 0.15s}
+.btn-del:hover{background:var(--red-bg);color:var(--red);border-color:var(--red-bg)}
+.btn-edit{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid transparent;background:none;color:var(--muted);cursor:pointer;transition:all 0.15s}
+.btn-edit:hover{background:var(--accent-bg);color:var(--accent2);border-color:var(--accent-bg)}
+
+.link-card.editing{border-color:var(--accent);background:var(--bg3)}
+.edit-row{display:grid;grid-template-columns:1fr 1.8fr 1fr auto auto;gap:6px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.btn-save-edit{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;padding:5px 12px;background:var(--accent);color:#f0effe;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.btn-save-edit:hover{background:#6b5fe6}
+.btn-cancel-edit{font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);cursor:pointer;transition:all 0.15s}
+.btn-cancel-edit:hover{background:var(--bg4);color:var(--text)}
+.link-card.editing .link-main{flex:1}
+
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:12px;background:var(--bg2);border-radius:var(--rl);border:1px dashed var(--border)}
+.empty-icon{font-size:28px;margin-bottom:10px;opacity:0.3}
+.empty-text{color:var(--muted);font-size:13px;margin-bottom:4px}
+.empty-sub{color:var(--hint);font-size:11px}
+
+/* ── SETTINGS (admin) ────────────────────────── */
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:1.1rem 1.25rem;margin-top:1.5rem}
+.settings-hd{font-size:11px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.pw-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+.btn-save{font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);cursor:pointer;white-space:nowrap;height:36px;transition:all 0.15s}
+.btn-save:hover{background:var(--bg4)}
+.toast{font-size:11px;color:var(--green);margin-top:8px;min-height:16px;transition:opacity 0.3s}
+
+/* ── VIEWER HEADER ───────────────────────────── */
+.viewer-hero{padding:1.5rem 1.25rem 0.5rem;text-align:center}
+.viewer-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.viewer-sub{font-size:11px;color:var(--muted)}
+
+/* ── MANAGE CATS ─────────────────────────────── */
+.manage-cats{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px;margin-top:6px}
+.cat-tag-edit{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:999px;padding:3px 8px 3px 10px;font-size:11px;color:var(--muted)}
+.cat-tag-edit .cat-dot{width:6px;height:6px}
+.btn-cat-del{background:none;border:none;color:var(--hint);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;transition:color 0.15s}
+.btn-cat-del:hover{color:var(--red)}
+.add-cat-row{display:flex;gap:6px;padding:8px 10px 0}
+.add-cat-row input{flex:1;padding:6px 9px;font-size:11px}
+.btn-cat-add{font-family:'DM Mono',monospace;font-size:11px;padding:6px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.btn-cat-add:hover{background:var(--bg4)}
+
+.divider{height:1px;background:var(--border);margin:1.25rem 0}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><div class="loading-text">Yükleniyor…</div></div>
+
+<!-- HOME -->
+<div id="s-home" class="screen">
+  <div class="home-inner">
+    <div class="home-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#b0a8ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    </div>
+    <h1 class="home-title">Link<span>Board</span></h1>
+    <p class="home-sub">Shared bookmarks, organised.</p>
+    <div class="mode-grid">
+      <div class="mode-card" onclick="goTo('admin-gate')">
+        <div class="mode-icon" style="background:var(--accent-bg)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b0a8ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="mode-title">Admin</div>
+        <div class="mode-desc">Add, organise &amp; manage</div>
+      </div>
+      <div class="mode-card" onclick="goTo('viewer-gate')">
+        <div class="mode-icon" style="background:var(--green-bg)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="mode-title">Viewer</div>
+        <div class="mode-desc">Browse published links</div>
+      </div>
+    </div>
+    <p class="home-hint">Open two tabs — one for each role</p>
+  </div>
+</div>
+
+<!-- ADMIN GATE -->
+<div id="s-admin-gate" class="screen">
+  <div class="gate">
+    <div class="gate-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b0a8ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+    <h2>Admin access</h2>
+    <p class="gate-sub">Enter the admin passcode to continue</p>
+    <label class="field-label">Passcode</label>
+    <input type="password" id="admin-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()">
+    <div class="err" id="admin-err"></div>
+    <button class="btn-primary" onclick="loginAdmin()">Sign in as admin</button>
+    <button class="btn-back" onclick="goTo('home')">← Back</button>
+  </div>
+</div>
+
+<!-- VIEWER GATE -->
+<div id="s-viewer-gate" class="screen">
+  <div class="gate">
+    <div class="gate-logo" style="background:var(--green-bg)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+    <h2>Viewer access</h2>
+    <p class="gate-sub">Enter the viewer passcode to continue</p>
+    <label class="field-label">Passcode</label>
+    <input type="password" id="viewer-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginViewer()">
+    <div class="err" id="viewer-err"></div>
+    <button class="btn-primary" style="background:var(--green);color:#0a1a0e" onclick="loginViewer()">Sign in as viewer</button>
+    <button class="btn-back" onclick="goTo('home')">← Back</button>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="s-admin" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="tb-logo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b0a8ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+      <span class="tb-name">Link<span>Board</span></span>
+    </div>
+    <div class="topbar-right">
+      <span class="badge badge-admin">ADMIN</span>
+      <button class="btn-sm" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="sidebar" id="admin-sidebar"></div>
+    <div class="main-scroll">
+      <!-- add form -->
+      <div class="add-form">
+        <div class="add-form-hd">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add a link
+        </div>
+        <div class="add-inputs">
+          <div class="field-group"><label class="field-label">Title</label><input type="text" id="new-title" placeholder="My resource"></div>
+          <div class="field-group"><label class="field-label">URL</label><input type="url" id="new-url" placeholder="https://..."></div>
+          <div class="field-group"><label class="field-label">Category</label><select class="cat-select" id="new-cat"></select></div>
+          <button class="btn-add" onclick="addLink()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add
+          </button>
+        </div>
+        <div class="add-err" id="add-err"></div>
+      </div>
+
+      <!-- links -->
+      <div class="list-header">
+        <div class="search-row" style="flex:1;gap:8px;margin-bottom:0">
+          <div class="search-wrap" style="flex:1">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="admin-search" placeholder="Search links…" oninput="renderAdmin()">
+          </div>
+          <select class="sort-select" id="admin-sort" onchange="renderAdmin()">
+            <option value="order">Custom order</option>
+            <option value="az">A → Z</option>
+            <option value="za">Z → A</option>
+            <option value="newest">Newest first</option>
+          </select>
+          <span class="list-count" id="admin-count"></span>
+        </div>
+      </div>
+      <div class="links-grid" id="admin-list"></div>
+
+      <div class="divider"></div>
+
+      <!-- settings -->
+      <div class="settings-card">
+        <div class="settings-hd">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
+          Settings
+        </div>
+        <div class="pw-row">
+          <div class="field-group"><label class="field-label">New admin passcode</label><input type="text" id="set-admin-pw" placeholder="Leave blank to keep"></div>
+          <div class="field-group"><label class="field-label">New viewer passcode</label><input type="text" id="set-viewer-pw" placeholder="Leave blank to keep"></div>
+          <button class="btn-save" onclick="savePasscodes()">Save</button>
+        </div>
+        <div class="toast" id="pw-toast"></div>
+      </div>
+
+      <!-- manage categories -->
+      <div class="settings-card" style="margin-top:1rem">
+        <div class="settings-hd">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8"/></svg>
+          Categories
+        </div>
+        <div class="manage-cats" id="manage-cats"></div>
+        <div class="add-cat-row">
+          <input type="text" id="new-cat-name" placeholder="Category name…" onkeydown="if(event.key==='Enter')addCategory()">
+          <button class="btn-cat-add" onclick="addCategory()">+ Add</button>
+        </div>
+        <div class="add-err" id="cat-err" style="padding:0 10px;margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VIEWER APP -->
+<div id="s-viewer" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="tb-logo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b0a8ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+      <span class="tb-name">Link<span>Board</span></span>
+    </div>
+    <div class="topbar-right">
+      <span class="badge badge-viewer">VIEWER</span>
+      <button class="btn-sm" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="sidebar" id="viewer-sidebar"></div>
+    <div class="main-scroll">
+      <div class="search-row" style="margin-bottom:1.25rem">
+        <div class="search-wrap" style="flex:1">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="viewer-search" placeholder="Search links…" oninput="renderViewer()">
+        </div>
+        <span class="list-count" id="viewer-count"></span>
+      </div>
+      <div class="links-grid" id="viewer-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://shiny-hill-fe1e.egedogukan13.workers.dev';
+let data = null;
+let activeCat = 'all';
+let dragSrc = null;
+
+const CAT_COLORS = [
+  {bg:'var(--accent-bg)',color:'var(--accent2)',dot:'#7c6ff7'},
+  {bg:'var(--green-bg)',color:'var(--green)',dot:'#34d399'},
+  {bg:'var(--amber-bg)',color:'var(--amber)',dot:'#fbbf24'},
+  {bg:'var(--blue-bg)',color:'var(--blue)',dot:'#60a5fa'},
+  {bg:'var(--pink-bg)',color:'var(--pink)',dot:'#f472b6'},
+  {bg:'var(--teal-bg)',color:'var(--teal)',dot:'#2dd4bf'},
+  {bg:'var(--red-bg)',color:'var(--red)',dot:'#f87171'},
+];
+
+function defaultData(){
+  return{adminPw:'admin123',viewerPw:'viewer123',links:[],categories:['Design','Dev','Tools','Reading']};
+}
+
+async function loadRemote(){
+  try{const r=await fetch(API+'/data');data=await r.json();}
+  catch(e){data=defaultData();}
+  if(!data.categories) data.categories=['General'];
+  if(!data.links) data.links=[];
+  data.links.forEach((l,i)=>{if(l.id==null)l.id=Date.now()+i;if(!l.cat)l.cat=data.categories[0]||'General';if(!l.added)l.added=Date.now()+i;});
+}
+
+async function saveRemote(){
+  try{await fetch(API+'/data',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});}
+  catch(e){console.warn('Save failed',e);}
+}
+
+function catStyle(catName){
+  if(!data||!data.categories)return CAT_COLORS[0];
+  const i=data.categories.indexOf(catName);
+  return CAT_COLORS[((i<0?0:i))%CAT_COLORS.length];
+}
+
+function getInitials(t){return t.trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?'}
+
+function faviconUrl(url){
+  try{const h=new URL(url).hostname;return`https://www.google.com/s2/favicons?domain=${h}&sz=32`;}
+  catch(e){return null;}
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function goTo(screen){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+screen).classList.add('active');
+  if(screen==='admin'){activeCat='all';renderAdmin();}
+  if(screen==='viewer'){activeCat='all';renderViewer();}
+}
+
+function logout(){goTo('home');}
+
+function loginAdmin(){
+  const pw=document.getElementById('admin-pw').value;
+  if(pw===data.adminPw){document.getElementById('admin-pw').value='';document.getElementById('admin-err').textContent='';goTo('admin');}
+  else document.getElementById('admin-err').textContent='Incorrect passcode.';
+}
+function loginViewer(){
+  const pw=document.getElementById('viewer-pw').value;
+  if(pw===data.viewerPw){document.getElementById('viewer-pw').value='';document.getElementById('viewer-err').textContent='';goTo('viewer');}
+  else document.getElementById('viewer-err').textContent='Incorrect passcode.';
+}
+
+// ── SIDEBAR ─────────────────────────────────────
+function buildSidebar(el,mode){
+  const links=data.links;
+  const cats=data.categories;
+  const allCount=filterLinks(links,'all','').length;
+
+  let html=`<div class="sb-section"><span class="sb-label">Filter</span>`;
+  html+=`<div class="cat-item${activeCat==='all'?' active':''}" onclick="setActiveCat('all','${mode}')">
+    <div class="cat-dot" style="background:var(--muted)"></div>
+    <span class="cat-name">All links</span>
+    <span class="cat-count">${allCount}</span>
+  </div>`;
+  cats.forEach(c=>{
+    const cs=catStyle(c);
+    const count=filterLinks(links,c,'').length;
+    html+=`<div class="cat-item${activeCat===c?' active':''}" onclick="setActiveCat('${esc(c)}','${mode}')">
+      <div class="cat-dot" style="background:${cs.dot}"></div>
+      <span class="cat-name">${esc(c)}</span>
+      <span class="cat-count">${count}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+
+function setActiveCat(cat,mode){
+  activeCat=cat;
+  if(mode==='admin')renderAdmin();
+  else renderViewer();
+}
+
+// ── FILTER + SORT ────────────────────────────────
+function filterLinks(links,cat,q){
+  return links.filter(l=>{
+    const matchCat=cat==='all'||l.cat===cat;
+    const matchQ=!q||l.title.toLowerCase().includes(q.toLowerCase())||l.url.toLowerCase().includes(q.toLowerCase());
+    return matchCat&&matchQ;
+  });
+}
+function sortLinks(links,sort){
+  const arr=[...links];
+  if(sort==='az')arr.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(sort==='za')arr.sort((a,b)=>b.title.localeCompare(a.title));
+  else if(sort==='newest')arr.sort((a,b)=>(b.added||0)-(a.added||0));
+  return arr;
+}
+
+// ── RENDER ADMIN ─────────────────────────────────
+function renderAdmin(){
+  buildSidebar(document.getElementById('admin-sidebar'),'admin');
+  buildCatSelect();
+  buildManageCats();
+
+  const q=document.getElementById('admin-search').value;
+  const sort=document.getElementById('admin-sort').value;
+  let filtered=filterLinks(data.links,activeCat,q);
+  if(sort!=='order')filtered=sortLinks(filtered,sort);
+
+  const count=filtered.length;
+  document.getElementById('admin-count').textContent=count+' link'+(count!==1?'s':'');
+
+  const list=document.getElementById('admin-list');
+  if(!count){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No links here yet</div><div class="empty-sub">Add one above to get started</div></div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(l=>{
+    const cs=catStyle(l.cat);
+    const fav=faviconUrl(l.url);
+    const initials=getInitials(l.title);
+    const idx=data.links.indexOf(l);
+    const catOpts=data.categories.map(c=>`<option value="${esc(c)}"${c===l.cat?' selected':''}>${esc(c)}</option>`).join('');
+    return`<div class="link-card" id="card-${idx}" draggable="true" data-idx="${idx}"
+      ondragstart="dragStart(event,${idx})" ondragover="dragOver(event,${idx})"
+      ondragleave="dragLeave(event)" ondrop="drop(event,${idx})">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="drag-handle"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1" fill="currentColor"/><circle cx="15" cy="6" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="18" r="1" fill="currentColor"/><circle cx="15" cy="18" r="1" fill="currentColor"/></svg></div>
+          <div class="link-favicon" style="background:${cs.bg};color:${cs.color}">
+            ${fav?`<img src="${esc(fav)}" onerror="this.parentElement.innerHTML='${initials}'" alt="">`:`${initials}`}
+          </div>
+          <div class="link-body">
+            <div class="link-title">${esc(l.title)}</div>
+            <div class="link-url">${esc(l.url)}</div>
+          </div>
+          <div class="link-right">
+            <span class="cat-pill" style="background:${cs.bg};color:${cs.color}">${esc(l.cat)}</span>
+            <div class="link-actions">
+              <button class="btn-open" onclick="openLink('${esc(l.url)}')">Open ↗</button>
+              <button class="btn-edit" onclick="startEdit(${idx})">Edit</button>
+              <button class="btn-del" onclick="deleteLink(${idx})">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="edit-row" id="edit-row-${idx}" style="display:none">
+          <div class="field-group"><label class="field-label">Title</label><input type="text" id="edit-title-${idx}" value="${esc(l.title)}"></div>
+          <div class="field-group"><label class="field-label">URL</label><input type="url" id="edit-url-${idx}" value="${esc(l.url)}"></div>
+          <div class="field-group"><label class="field-label">Category</label><select class="cat-select" id="edit-cat-${idx}">${catOpts}</select></div>
+          <button class="btn-save-edit" onclick="saveEdit(${idx})">Save</button>
+          <button class="btn-cancel-edit" onclick="cancelEdit(${idx})">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER VIEWER ────────────────────────────────
+function renderViewer(){
+  buildSidebar(document.getElementById('viewer-sidebar'),'viewer');
+  const q=document.getElementById('viewer-search').value;
+  const filtered=filterLinks(data.links,activeCat,q);
+  const count=filtered.length;
+  document.getElementById('viewer-count').textContent=count+' link'+(count!==1?'s':'');
+  const list=document.getElementById('viewer-list');
+  if(!count){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">No links published yet</div><div class="empty-sub">Check back soon</div></div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(l=>{
+    const cs=catStyle(l.cat);
+    const fav=faviconUrl(l.url);
+    const initials=getInitials(l.title);
+    const idx=data.links.indexOf(l);
+    return`<div class="link-card">
+      <div class="link-favicon" style="background:${cs.bg};color:${cs.color}">
+        ${fav?`<img src="${esc(fav)}" onerror="this.parentElement.innerHTML='${initials}'" alt="">`:`${initials}`}
+      </div>
+      <div class="link-body">
+        <div class="link-title">${esc(l.title)}</div>
+        <div class="link-url">${esc(l.url)}</div>
+      </div>
+      <div class="link-right">
+        <span class="cat-pill" style="background:${cs.bg};color:${cs.color}">${esc(l.cat)}</span>
+        <div class="link-actions">
+          <button class="btn-open" onclick="openLink('${esc(l.url)}')">Open ↗</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── CAT SELECT ───────────────────────────────────
+function buildCatSelect(){
+  const sel=document.getElementById('new-cat');
+  const prev=sel.value;
+  sel.innerHTML=data.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if(prev&&data.categories.includes(prev))sel.value=prev;
+}
+
+function buildManageCats(){
+  const el=document.getElementById('manage-cats');
+  el.innerHTML=data.categories.map((c,i)=>{
+    const cs=catStyle(c);
+    return`<div class="cat-tag-edit">
+      <div class="cat-dot" style="background:${cs.dot}"></div>
+      ${esc(c)}
+      <button class="btn-cat-del" onclick="deleteCategory(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function addCategory(){
+  const inp=document.getElementById('new-cat-name');
+  const name=inp.value.trim();
+  const err=document.getElementById('cat-err');
+  if(!name){err.textContent='Enter a category name.';return;}
+  if(data.categories.includes(name)){err.textContent='Already exists.';return;}
+  err.textContent='';
+  data.categories.push(name);
+  inp.value='';
+  await saveRemote();
+  renderAdmin();
+}
+
+async function deleteCategory(i){
+  const cat=data.categories[i];
+  data.categories.splice(i,1);
+  data.links.forEach(l=>{if(l.cat===cat)l.cat=data.categories[0]||'General';});
+  await saveRemote();
+  renderAdmin();
+}
+
+// ── CRUD ─────────────────────────────────────────
+async function addLink(){
+  const title=document.getElementById('new-title').value.trim();
+  const url=document.getElementById('new-url').value.trim();
+  const cat=document.getElementById('new-cat').value;
+  const err=document.getElementById('add-err');
+  if(!title){err.textContent='Enter a title.';return;}
+  if(!url||!url.startsWith('http')){err.textContent='Enter a valid URL starting with http.';return;}
+  err.textContent='';
+  data.links.push({id:Date.now(),title,url,cat,added:Date.now()});
+  document.getElementById('new-title').value='';
+  document.getElementById('new-url').value='';
+  await saveRemote();
+  renderAdmin();
+}
+
+async function deleteLink(i){
+  data.links.splice(i,1);
+  await saveRemote();
+  renderAdmin();
+}
+
+async function savePasscodes(){
+  const ap=document.getElementById('set-admin-pw').value.trim();
+  const vp=document.getElementById('set-viewer-pw').value.trim();
+  if(ap)data.adminPw=ap;
+  if(vp)data.viewerPw=vp;
+  document.getElementById('set-admin-pw').value='';
+  document.getElementById('set-viewer-pw').value='';
+  await saveRemote();
+  const t=document.getElementById('pw-toast');
+  t.textContent='Passcodes updated.';
+  t.style.opacity='1';
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>{t.textContent='';},300);},2500);
+}
+
+function openLink(url){window.open(url,'_blank');}
+
+// ── EDIT ─────────────────────────────────────────
+function startEdit(idx){
+  document.querySelectorAll('.edit-row').forEach(r=>r.style.display='none');
+  document.querySelectorAll('.link-card').forEach(c=>c.classList.remove('editing'));
+  const row=document.getElementById('edit-row-'+idx);
+  const card=document.getElementById('card-'+idx);
+  if(row){row.style.display='grid';card.classList.add('editing');card.removeAttribute('draggable');}
+  document.getElementById('edit-title-'+idx).focus();
+}
+
+function cancelEdit(idx){
+  const row=document.getElementById('edit-row-'+idx);
+  const card=document.getElementById('card-'+idx);
+  if(row){row.style.display='none';card.classList.remove('editing');card.setAttribute('draggable','true');}
+}
+
+async function saveEdit(idx){
+  const title=document.getElementById('edit-title-'+idx).value.trim();
+  const url=document.getElementById('edit-url-'+idx).value.trim();
+  const cat=document.getElementById('edit-cat-'+idx).value;
+  if(!title||!url||!url.startsWith('http'))return;
+  data.links[idx].title=title;
+  data.links[idx].url=url;
+  data.links[idx].cat=cat;
+  await saveRemote();
+  renderAdmin();
+}
+
+// ── DRAG & DROP ──────────────────────────────────
+function dragStart(e,idx){
+  dragSrc=idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function dragOver(e,idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.link-card').forEach(c=>c.classList.remove('drag-over'));
+  if(idx!==dragSrc)e.currentTarget.classList.add('drag-over');
+}
+function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
+async function drop(e,toIdx){
+  e.preventDefault();
+  document.querySelectorAll('.link-card').forEach(c=>{c.classList.remove('drag-over');c.classList.remove('dragging');});
+  if(dragSrc===null||dragSrc===toIdx)return;
+  const moved=data.links.splice(dragSrc,1)[0];
+  data.links.splice(toIdx,0,moved);
+  dragSrc=null;
+  await saveRemote();
+  renderAdmin();
+}
+
+// ── BOOT ─────────────────────────────────────────
+(async()=>{
+  await loadRemote();
+  document.getElementById('loading').classList.add('gone');
+  document.getElementById('s-home').classList.add('active');
+})();
+</script>
+</body>
+</html>
